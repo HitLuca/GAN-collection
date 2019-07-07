@@ -1,0 +1,1 @@
+name = "gan_collection"
