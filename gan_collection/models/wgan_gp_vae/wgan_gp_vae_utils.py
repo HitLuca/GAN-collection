@@ -1,12 +1,14 @@
 from functools import partial
 from typing import Tuple
 
+import keras.backend as K
 from keras import Model, Input
 from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, Lambda, MaxPooling2D, Activation, UpSampling2D
+from keras.losses import mean_squared_error
 from keras.optimizers import Adam
 
-from gan_collection.utils.gan_utils import vae_loss, gradient_penalty_loss, \
-    RandomWeightedAverage, sampling, set_model_trainable, wasserstein_loss, conv_res_series, deconv_res_series
+from gan_collection.utils.gan_utils import gradient_penalty_loss, RandomWeightedAverage, sampling, \
+    set_model_trainable, wasserstein_loss
 
 
 def build_encoder(latent_dim: int, resolution: int, filters: int = 32, kernel_size: int = 3,
@@ -17,6 +19,8 @@ def build_encoder(latent_dim: int, resolution: int, filters: int = 32, kernel_si
     encoded = encoder_inputs
 
     while image_size != 4:
+        encoded = Conv2D(filters, kernel_size, padding='same')(encoded)
+        encoded = LeakyReLU(0.2)(encoded)
         encoded = Conv2D(filters, kernel_size, padding='same')(encoded)
         encoded = LeakyReLU(0.2)(encoded)
         encoded = MaxPooling2D()(encoded)
@@ -51,6 +55,8 @@ def build_decoder(latent_dim: int, resolution: int, filters: int = 32, kernel_si
         decoded = UpSampling2D()(decoded)
         decoded = Conv2D(filters, kernel_size, padding='same')(decoded)
         decoded = Activation('relu')(decoded)
+        decoded = Conv2D(filters, kernel_size, padding='same')(decoded)
+        decoded = Activation('relu')(decoded)
 
         filters = int(filters / 2)
         image_size *= 2
@@ -71,6 +77,9 @@ def build_critic(resolution: int, filters: int = 32, kernel_size: int = 3, chann
     while image_size != 4:
         criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
         criticized = LeakyReLU(0.2)(criticized)
+        criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
+        criticized = LeakyReLU(0.2)(criticized)
+
         criticized = MaxPooling2D()(criticized)
 
         filters *= 2
@@ -85,8 +94,9 @@ def build_critic(resolution: int, filters: int = 32, kernel_size: int = 3, chann
     return critic
 
 
-def build_vae_generator_model(encoder: Model, decoder_generator: Model, critic: Model, latent_dim: int, resolution: int,
-                              channels: int, gamma: float, vae_lr: float) -> Tuple[Model, Model]:
+def build_encoder_decoder_models(encoder: Model, decoder_generator: Model, critic: Model, resolution: int,
+                                 latent_dim: int,
+                                 channels: int, gamma: float, vae_lr: float) -> Tuple[Model, Model]:
     set_model_trainable(encoder, True)
     set_model_trainable(decoder_generator, True)
     set_model_trainable(critic, False)
@@ -97,18 +107,36 @@ def build_vae_generator_model(encoder: Model, decoder_generator: Model, critic: 
     generated_samples = decoder_generator(noise_samples)
     generated_criticized = critic(generated_samples)
 
+    real_criticized = critic(real_samples)
     z_mean, z_log_var = encoder(real_samples)
 
     sampled_z = Lambda(sampling)([z_mean, z_log_var])
     decoded_samples = decoder_generator(sampled_z)
+    decoded_criticized = critic(decoded_samples)
 
-    vae_generator_model = Model([real_samples, noise_samples], [generated_criticized, generated_criticized])
-    vae_generator_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0.5, beta_2=0.9),
-                                loss=[wasserstein_loss, vae_loss(z_mean, z_log_var, real_samples, decoded_samples)],
-                                loss_weights=[gamma, (1 - gamma)])
+    vae_model = Model([real_samples, noise_samples], [generated_criticized, generated_criticized, generated_criticized])
+    vae_model.compile(optimizer=Adam(lr=vae_lr, beta_1=0.5, beta_2=0.9),
+                      loss=[kl_loss(z_mean, z_log_var),
+                            wasserstein_loss,
+                            mse_loss(real_criticized, decoded_criticized)],
+                      loss_weights=[1 / 3.0, gamma * 1 / 3.0, (1 - gamma) * 1 / 3.0])
 
-    generator_model = Model(noise_samples, generated_samples, name='generator_model')
-    return vae_generator_model, generator_model
+    generator = Model(noise_samples, generated_samples)
+    return vae_model, generator
+
+
+def mse_loss(real_criticized, decoded_criticized):
+    def loss(y_true, y_pred):
+        return mean_squared_error(real_criticized, decoded_criticized)
+
+    return loss
+
+
+def kl_loss(z_mean, z_log_var):
+    def loss(y_true, y_pred):
+        return K.mean(- 0.5 * K.sum(1 + z_log_var - K.square(z_mean) - K.exp(z_log_var), axis=-1))
+
+    return loss
 
 
 def build_critic_model(encoder: Model, decoder_generator: Model, critic: Model, latent_dim: int, resolution: int,

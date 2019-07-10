@@ -44,19 +44,20 @@ class WGAN_GP_VAE(AbstractGAN):
         self._save_models_architectures()
 
     def _build_models(self) -> None:
-        self._encoder = wgan_gp_vae_utils.build_encoder(self._latent_dim, self._resolution)
-        self._decoder_generator = wgan_gp_vae_utils.build_decoder(self._latent_dim, self._resolution)
-        self._critic = wgan_gp_vae_utils.build_critic(self._resolution)
+        self._encoder = wgan_gp_vae_utils.build_encoder(self._latent_dim, self._resolution, channels=self._channels)
+        self._decoder_generator = wgan_gp_vae_utils.build_decoder(self._latent_dim, self._resolution,
+                                                                  channels=self._channels)
+        self._critic = wgan_gp_vae_utils.build_critic(self._resolution, channels=self._channels)
 
-        self._vae_generator_model, self._generator = \
-            wgan_gp_vae_utils.build_vae_generator_model(self._encoder,
-                                                        self._decoder_generator,
-                                                        self._critic,
-                                                        self._latent_dim,
-                                                        self._resolution,
-                                                        self._channels,
-                                                        self._gamma,
-                                                        self._generator_lr)
+        self._vae_model, self._generator = \
+            wgan_gp_vae_utils.build_encoder_decoder_models(self._encoder,
+                                                           self._decoder_generator,
+                                                           self._critic,
+                                                           self._resolution,
+                                                           self._latent_dim,
+                                                           self._channels,
+                                                           self._gamma,
+                                                           self._generator_lr)
 
         self._critic_model = wgan_gp_vae_utils.build_critic_model(self._encoder,
                                                                   self._decoder_generator,
@@ -65,7 +66,8 @@ class WGAN_GP_VAE(AbstractGAN):
                                                                   self._resolution,
                                                                   self._batch_size,
                                                                   self._critic_lr,
-                                                                  self._gradient_penalty_weight)
+                                                                  self._gradient_penalty_weight,
+                                                                  channels=self._channels)
 
     def _save_models_architectures(self) -> None:
         plot_model(self._encoder, to_file=self._run_dir + 'encoder.png')
@@ -97,9 +99,9 @@ class WGAN_GP_VAE(AbstractGAN):
                 noise = np.random.normal(0, 1, (self._batch_size, self._latent_dim))
                 inputs = [real_samples, noise]
 
-                losses = self._vae_generator_model.train_on_batch(inputs, [ones, ones])
-                generator_losses.append(losses[1])
-                vae_losses.append(losses[2])
+                losses = self._vae_model.train_on_batch(inputs, [ones, ones, ones])
+                generator_losses.append(losses[2])
+                vae_losses.append(losses[1] + losses[3])
             generator_loss = np.mean(generator_losses)
             vae_loss = np.mean(vae_losses)
 
@@ -164,7 +166,7 @@ class WGAN_GP_VAE(AbstractGAN):
         root_dir = self._model_dir + str(self._epoch) + '/'
         os.mkdir(root_dir)
         self._critic_model.save(root_dir + 'critic_model.h5')
-        self._vae_generator_model.save(root_dir + '_vae_generator_model.h5')
+        self._vae_model.save(root_dir + 'vae_model.h5')
         self._encoder.save(root_dir + 'encoder.h5')
         self._decoder_generator.save(root_dir + 'decoder_generator.h5')
         self._critic.save(root_dir + 'critic.h5')

@@ -14,7 +14,10 @@ def plot_save_samples(generated_samples, rows, columns, resolution, channels, ou
             plt.subplot(rows, columns, k)
             if titles is not None:
                 plt.title(titles[k - 1])
-            plt.imshow((generated_samples[k - 1].reshape(resolution, resolution, channels) + 1.0) / 2.0)
+            if channels == 3:
+                plt.imshow((generated_samples[k - 1].reshape(resolution, resolution, channels) + 1.0) / 2.0)
+            elif channels == 1:
+                plt.imshow((generated_samples[k - 1].reshape(resolution, resolution) + 1.0) / 2.0, cmap='gray')
             plt.xticks([])
             plt.yticks([])
             k += 1
@@ -38,7 +41,10 @@ def plot_save_latent_space(generated_samples, rows, columns, resolution, channel
     for i in range(rows):
         for j in range(columns):
             plt.subplot(rows, columns, k)
-            plt.imshow((generated_samples[k - 1].reshape(resolution, resolution, channels) + 1.0) / 2.0)
+            if channels == 3:
+                plt.imshow((generated_samples[k - 1].reshape(resolution, resolution, channels) + 1.0) / 2.0)
+            elif channels == 1:
+                plt.imshow((generated_samples[k - 1].reshape(resolution, resolution) + 1.0) / 2.0, cmap='gray')
             plt.xticks([])
             plt.yticks([])
             k += 1

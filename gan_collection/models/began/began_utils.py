@@ -23,6 +23,8 @@ def build_decoder(latent_dim: int, resolution: int, filters: int = 32, kernel_si
         decoded = UpSampling2D()(decoded)
         decoded = Conv2D(filters, kernel_size, padding='same')(decoded)
         decoded = Activation('elu')(decoded)
+        decoded = Conv2D(filters, kernel_size, padding='same')(decoded)
+        decoded = Activation('elu')(decoded)
 
         filters = int(filters / 2)
         image_size *= 2
@@ -42,6 +44,8 @@ def build_encoder(latent_dim: int, resolution: int, filters: int = 32, kernel_si
     encoded = encoder_inputs
 
     while image_size != 4:
+        encoded = Conv2D(filters, kernel_size, padding='same')(encoded)
+        encoded = Activation('elu')(encoded)
         encoded = Conv2D(filters, kernel_size, padding='same')(encoded)
         encoded = Activation('elu')(encoded)
         encoded = MaxPooling2D()(encoded)

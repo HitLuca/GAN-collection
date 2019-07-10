@@ -1,6 +1,5 @@
 from keras import Model, Input
-from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, Conv2DTranspose, BatchNormalization, \
-    Dropout, UpSampling2D, MaxPooling2D
+from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, UpSampling2D, MaxPooling2D
 from keras.optimizers import Adam
 
 from gan_collection.utils.gan_utils import set_model_trainable
@@ -23,6 +22,8 @@ def build_generator(latent_dim: int, resolution: int, filters: int = 32, kernel_
         generated = UpSampling2D()(generated)
         generated = Conv2D(filters, kernel_size, padding='same')(generated)
         generated = LeakyReLU(0.2)(generated)
+        generated = Conv2D(filters, kernel_size, padding='same')(generated)
+        generated = LeakyReLU(0.2)(generated)
 
         filters = int(filters / 2)
         image_size *= 2
@@ -41,6 +42,8 @@ def build_discriminator(resolution: int, filters: int = 32, kernel_size: int = 3
     discriminated = discriminator_inputs
 
     while image_size != 4:
+        discriminated = Conv2D(filters, kernel_size, padding='same')(discriminated)
+        discriminated = LeakyReLU(0.2)(discriminated)
         discriminated = Conv2D(filters, kernel_size, padding='same')(discriminated)
         discriminated = LeakyReLU(0.2)(discriminated)
         discriminated = MaxPooling2D()(discriminated)

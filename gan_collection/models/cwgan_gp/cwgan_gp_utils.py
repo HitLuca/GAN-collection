@@ -27,6 +27,8 @@ def build_generator(latent_dim: int, classes_n: int, resolution: int, filters: i
         generated = UpSampling2D()(generated)
         generated = Conv2D(filters, kernel_size, padding='same')(generated)
         generated = Activation('relu')(generated)
+        generated = Conv2D(filters, kernel_size, padding='same')(generated)
+        generated = Activation('relu')(generated)
 
         filters = int(filters / 2)
         image_size *= 2
@@ -46,6 +48,8 @@ def build_critic(resolution: int, classes_n: int, filters: int = 32, kernel_size
     criticized = critic_inputs
 
     while image_size != 4:
+        criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
+        criticized = LeakyReLU(0.2)(criticized)
         criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
         criticized = LeakyReLU(0.2)(criticized)
         criticized = MaxPooling2D()(criticized)

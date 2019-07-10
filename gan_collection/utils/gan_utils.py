@@ -1,9 +1,7 @@
 from typing import List
 
 import numpy as np
-from keras import backend as K, Model, initializers
-from keras.engine import Layer
-from keras.layers import Conv2D, MaxPooling2D, LeakyReLU, UpSampling2D, Add, Conv2DTranspose, Activation
+from keras import backend as K, Model
 from keras.layers.merge import _Merge
 
 
@@ -60,3 +58,9 @@ def sampling(args):
     latent_dim = K.int_shape(z_mean)[1]
     epsilon = K.random_normal(shape=(batch_size, latent_dim))
     return z_mean + K.exp(0.5 * z_log_var) * epsilon
+
+
+def mean_gaussian_negative_log_likelihood(y_true, y_pred):
+    nll = 0.5 * np.log(2 * np.pi) + 0.5 * K.square(y_pred - y_true)
+    axis = tuple(range(1, len(K.int_shape(y_true))))
+    return K.mean(K.sum(nll, axis=axis), axis=-1)
