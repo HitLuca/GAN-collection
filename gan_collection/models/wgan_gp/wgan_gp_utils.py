@@ -1,12 +1,11 @@
 from functools import partial
 
 from keras import Model, Input
-from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, Activation, UpSampling2D, \
-    MaxPooling2D
+from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, Activation, UpSampling2D, MaxPooling2D, Add
 from keras.optimizers import Adam
 
 from gan_collection.utils.gan_utils import gradient_penalty_loss, \
-    RandomWeightedAverage, set_model_trainable
+    RandomWeightedAverage, set_model_trainable, GroupNormalization
 from gan_collection.utils.gan_utils import wasserstein_loss
 
 
@@ -23,16 +22,23 @@ def build_generator(latent_dim: int, resolution: int, filters: int = 32, kernel_
 
     generated = Reshape((image_size, image_size, 16))(generated)
 
-    while image_size != resolution:
-        generated = UpSampling2D()(generated)
-        generated = Conv2D(filters, kernel_size, padding='same')(generated)
-        generated = Activation('relu')(generated)
-        generated = Conv2D(filters, kernel_size, padding='same')(generated)
-        generated = Activation('relu')(generated)
+    generated = Conv2D(filters, kernel_size, padding='same')(generated)
 
+    while image_size != resolution:
+        shortcut = generated
+        shortcut = UpSampling2D()(shortcut)
+        shortcut = Conv2D(filters, 1, padding='same')(shortcut)
+
+        generated = UpSampling2D()(generated)
+        generated = Activation('relu')(generated)
+        generated = Conv2D(filters, kernel_size, padding='same')(generated)
+
+        generated = Add()([shortcut, generated])
         filters = int(filters / 2)
         image_size *= 2
 
+    generated = GroupNormalization(int(filters / 4))(generated)
+    generated = Activation('relu')(generated)
     generated = Conv2D(channels, kernel_size, padding='same', activation='sigmoid')(generated)
 
     generator = Model(generator_inputs, generated, name='generator')
@@ -46,16 +52,23 @@ def build_critic(resolution: int, filters: int = 32, kernel_size: int = 3, chann
     critic_inputs = Input((resolution, resolution, channels))
     criticized = critic_inputs
 
+    criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
+
     while image_size != 4:
-        criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
+        shortcut = criticized
+        shortcut = Conv2D(filters, 1, padding='same')(shortcut)
+        shortcut = MaxPooling2D()(shortcut)
+
         criticized = LeakyReLU(0.2)(criticized)
         criticized = Conv2D(filters, kernel_size, padding='same')(criticized)
-        criticized = LeakyReLU(0.2)(criticized)
         criticized = MaxPooling2D()(criticized)
+
+        criticized = Add()([shortcut, criticized])
 
         filters *= 2
         image_size = int(image_size / 2)
 
+    criticized = LeakyReLU(0.2)(criticized)
     criticized = Flatten()(criticized)
 
     criticized = Dense(1)(criticized)

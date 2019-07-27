@@ -42,8 +42,8 @@ class WGAN_GP(AbstractGAN):
         self._save_models_architectures()
 
     def _build_models(self) -> None:
-        self._generator = wgan_gp_utils.build_generator(self._latent_dim, self._resolution)
-        self._critic = wgan_gp_utils.build_critic(self._resolution)
+        self._generator = wgan_gp_utils.build_generator(self._latent_dim, self._resolution, channels=self._channels)
+        self._critic = wgan_gp_utils.build_critic(self._resolution, channels=self._channels)
 
         self._generator_model = wgan_gp_utils.build_generator_model(self._generator,
                                                                     self._critic,
@@ -56,7 +56,8 @@ class WGAN_GP(AbstractGAN):
                                                               self._resolution,
                                                               self._batch_size,
                                                               self._critic_lr,
-                                                              self._gradient_penalty_weight)
+                                                              self._gradient_penalty_weight,
+                                                              channels=self._channels)
 
     def _save_models_architectures(self) -> None:
         plot_model(self._generator, to_file=self._run_dir + 'generator.png')
