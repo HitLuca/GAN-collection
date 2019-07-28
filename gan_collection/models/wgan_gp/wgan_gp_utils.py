@@ -5,7 +5,7 @@ from keras.layers import Dense, LeakyReLU, Reshape, Conv2D, Flatten, Activation,
 from keras.optimizers import Adam
 
 from gan_collection.utils.gan_utils import gradient_penalty_loss, \
-    RandomWeightedAverage, set_model_trainable, GroupNormalization
+    RandomWeightedAverage, set_model_trainable
 from gan_collection.utils.gan_utils import wasserstein_loss
 
 
@@ -37,7 +37,6 @@ def build_generator(latent_dim: int, resolution: int, filters: int = 32, kernel_
         filters = int(filters / 2)
         image_size *= 2
 
-    generated = GroupNormalization(int(filters / 4))(generated)
     generated = Activation('relu')(generated)
     generated = Conv2D(channels, kernel_size, padding='same', activation='sigmoid')(generated)
 
