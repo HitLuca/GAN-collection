@@ -1,7 +1,7 @@
 from functools import partial
 
-from keras import Model
-from keras.layers import *
+from keras import Model, Input
+from keras.layers import Concatenate, Activation, Dense, Reshape, UpSampling2D, Conv2D, LeakyReLU, Flatten, MaxPooling2D
 from keras.optimizers import Adam
 
 from gan_collection.utils.gan_utils import set_model_trainable, wasserstein_loss, \
