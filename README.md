@@ -1,4 +1,4 @@
-# Emoji-GAN
+# GAN-collection
 [![License MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![HitCount](http://hits.dwyl.io/HitLuca/GAN-collection.svg)](http://hits.dwyl.io/HitLuca/GAN-collection)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/HitLuca/GAN-collection.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/HitLuca/GAN-collection/alerts/)
