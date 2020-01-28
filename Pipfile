@@ -15,7 +15,7 @@ pyyaml = "==4.2b4"
 graphviz = "*"
 scipy = "==1.2.0"
 pydot = "*"
-tensorflow = "==1.4.0"
+tensorflow = "==1.15.2"
 
 [requires]
 python_version = "3.6"
